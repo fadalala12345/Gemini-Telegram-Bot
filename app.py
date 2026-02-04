@@ -3,30 +3,27 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-# التوكن الخاص بك من صورتك في BotFather
-TELEGRAM_TOKEN = "8465944522:AAFRZ7lQF42PCj0m4TIunLGZodNJFEZ9b4c"
+# بياناتك الصحيحة من الصور
+TOKEN = "8465944522:AAFRZ7lQF42PCj0m4TIunLGZodNJFEZ9b4c"
 GEMINI_KEY = "AIzaSyAEDxL8dJux-yRVej-t_TF0gHIi8brWWyc"
 
 @app.route('/', methods=['POST'])
-def webhook():
+def bot_logic():
     data = request.get_json()
-    if "message" in data and "text" in data["message"]:
+    if "message" in data:
         chat_id = data["message"]["chat"]["id"]
-        user_text = data["message"]["text"]
+        text = data["message"].get("text", "")
         
-        # نداء Gemini AI
+        # طلب الرد من Gemini
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-        try:
-            res = requests.post(url, json={"contents": [{"parts": [{"text": user_text}]}]}, timeout=10)
-            if res.status_code == 200:
-                ai_reply = res.json()['candidates'][0]['content']['parts'][0]['text']
-                # إرسال الرد النهائي لتليجرام
-                requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", 
-                              json={"chat_id": chat_id, "text": ai_reply})
-        except Exception as e:
-            print(f"Error: {e}")
+        res = requests.post(url, json={"contents": [{"parts": [{"text": text}]}]})
+        
+        if res.status_code == 200:
+            ai_reply = res.json()['candidates'][0]['content']['parts'][0]['text']
+            # إرسال الجواب لتليجرام
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id": chat_id, "text": ai_reply})
             
-    return "OK", 200
+    return "ok", 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000)
