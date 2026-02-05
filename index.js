@@ -2,56 +2,53 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
 const http = require('http');
 
-// 1. إنشاء سيرفر لإبقاء الخدمة نشطة على Render
+// 1. تشغيل سيرفر بسيط لإبقاء الخدمة حية على Render
 http.createServer((req, res) => {
     res.writeHead(200, {'Content-Type': 'text/plain'});
-    res.end('Bot is Live and Waiting for Pairing Code\n');
+    res.end('Bot Engine is Running\n');
 }).listen(process.env.PORT || 10000);
 
-// 2. مفتاح Gemini الخاص بك
+// 2. إعدادات Gemini الخاصة بك
 const GEMINI_KEY = "AlzaSyAEDxL8dJux-yWVaJ-T_TF0gHi18bzWWyc"; 
 
-// 3. إعدادات المتصفح لبيئة Linux في Render
+// 3. تهيئة البوت بأخف إعدادات ممكنة لـ Render
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         executablePath: '/usr/bin/chromium',
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
+            '--disable-gpu',
             '--single-process'
         ]
     }
 });
 
-// 4. المحرك الاستراتيجي لطلب كود الربط الرقمي
+// 4. دالة طلب الكود الرقمي الاستراتيجية
 async function startEngine() {
-    console.log("🚀 جاري تشغيل المحرك التقني... انتظر قليلاً");
+    console.log("🚀 جاري بدء المحرك التقني...");
     await client.initialize();
 
-    // محاولة طلب الكود كل 15 ثانية حتى ينجح ويظهر في Logs
-    const requestInterval = setInterval(async () => {
+    // ننتظر 20 ثانية لضمان تحميل صفحة واتساب بالكامل قبل طلب الكود
+    setTimeout(async () => {
         try {
-            // الرقم بالصيغة الدولية (ليبيا)
             const myNumber = "218924803945"; 
             const code = await client.requestPairingCode(myNumber);
-            
             console.log('**********************************************');
             console.log('✅ كود الربط الخاص بك هو: ' + code);
             console.log('**********************************************');
-            
-            // التوقف عن الطلب بمجرد الحصول على الكود بنجاح
-            if (code) clearInterval(requestInterval); 
         } catch (err) {
-            console.log("⏳ المحرك يحاول استخراج الكود من واتساب ويب... يرجى الانتظار");
+            console.log("❌ تعذر استخراج الكود حالياً، يرجى عمل Manual Deploy مرة أخرى.");
         }
-    }, 15000); 
+    }, 20000);
 }
 
-// 5. منطق استقبال الرسائل والرد عبر Gemini
+// 5. استقبال الرسائل والرد عبر الذكاء الاصطناعي
 client.on('message', async msg => {
-    if (msg.from.includes('@g.us')) return; // تجاهل المجموعات
+    if (msg.from.includes('@g.us')) return; 
     try {
         const response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
             contents: [{ parts: [{ text: msg.body }] }]
@@ -59,13 +56,13 @@ client.on('message', async msg => {
         const botReply = response.data.candidates[0].content.parts[0].text;
         await msg.reply(botReply);
     } catch (e) {
-        console.error("⚠️ خطأ في معالجة رد Gemini.");
+        console.error("⚠️ خطأ في رد Gemini.");
     }
 });
 
 client.on('ready', () => {
-    console.log('🎊 مبروك! تم الربط بنجاح والبوت جاهز للرد الآن.');
+    console.log('🎊 مبروك! البوت متصل الآن بنجاح.');
 });
 
-// تشغيل المحرك
+// انطلاق العملية
 startEngine();
